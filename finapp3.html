@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- Sets the language for the document (English). -->
+<head>
+    <meta charset="UTF-8"> <!-- Specifies the character encoding, necessary for displaying all symbols correctly. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- CRITICAL: Makes the site responsive on all devices (mobile, tablet, desktop). -->
+    <title>FinLedger Pro: Aesthetic Fintech Suite</title> <!-- The title shown in the browser tab. CHANGE THIS if you rename the app. -->
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script> <!-- Imports the Tailwind CSS framework for easy styling using simple classes. -->
+    <!-- Load Chart.js for Data Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script> <!-- Imports the library used to draw the dynamic graphs. -->
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script> <!-- Imports a library for high-quality, scalable icons (e.g., save, download). -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap'); <!-- Imports the 'Inter' font from Google Fonts for a clean, modern look. -->
+        
+        :root { /* This section defines global CSS variables, easy to change in one place. */
+            /* Light Mode - Aesthetic Refinement */
+            --color-bg-page-light: #f8f9fa; /* The color of the main page background. Change the hex code for a different base color. */
+            --color-bg-card-light: #ffffff; /* The color of the card backgrounds (the white boxes). */
+            --color-text-dark: #1f2937; /* The default color for most text. */
+        }
+
+        body { /* Styles applied to the entire page. */
+            font-family: 'Inter', sans-serif; /* Uses the imported font. */
+            transition: background-color 0.3s ease, color 0.3s ease; /* Adds a smooth visual fade when theme changes (though locked to light mode here). */
+            background-color: var(--color-bg-page-light); /* Sets the background color using the variable defined above. */
+            color: var(--color-text-dark); /* Sets the default text color. */
+        }
+
+        /* General Card Styling */
+        .card { /* Custom class applied to all major content blocks (like the input panel, reports). */
+            background-color: var(--color-bg-card-light); /* Uses the white card background color. */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Adds a subtle shadow for depth. Change '0.08' to '0.2' for a darker shadow. */
+            transition: all 0.3s ease; /* Smooth transition for hover effects or future theme changes. */
+            border-radius: 1rem; /* Sets rounded corners (1rem is a large, aesthetic curve). Change to '0.5rem' for slightly less rounded corners. */
+        }
+
+        /* Fixed Sidebar Styling */
+        .sidebar-input { /* Styles for the left input panel to keep it visible while scrolling the right panel. */
+            position: sticky; /* Keeps the element in place as the user scrolls. */
+            top: 1rem; /* Keeps it 1rem down from the top of the screen. */
+            height: calc(100vh - 2rem); /* Calculates full screen height minus top and bottom margin (2rem total). */
+            overflow-y: auto; /* Adds a scrollbar ONLY to the input panel if the content is too long. */
+        }
+        
+        .tab-content { display: none; } /* Hides all content sections by default. */
+        .tab-content.active { display: block; } /* ONLY shows the section that has the 'active' class (set by JavaScript). */
+        
+        .tab-button { /* Styling for the navigation buttons at the top. */
+            transition: color 0.2s, border-bottom 0.2s; /* Smooth visual effect when hovering or switching tabs. */
+        }
+
+        .tab-button.active { /* Styling specifically for the currently selected tab button. */
+            color: #2563eb; /* Sets the text color to a vibrant blue (Tailwind's blue-600). */
+            border-bottom: 3px solid #2563eb; /* Adds a thick blue line underneath the active tab. */
+            font-weight: 600; /* Makes the text bold. */
+        }
+
+        /* Input Focus Styling - High visibility */
+        input:focus, select:focus, textarea:focus { /* This applies to input fields when the user clicks on them. */
+            border-color: #3b82f6 !important; /* Sets the border color to blue. */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important; /* Adds a glowing blue outline for clarity. */
+            outline: none !important; /* Removes the default browser outline. */
+        }
+
+        /* Responsive Layout for Mobile */
+        @media (max-width: 1024px) { /* Styles that ONLY apply when the screen width is 1024 pixels or less (e.g., tablets/phones). */
+            .sidebar-input { /* Overrides the 'sticky' behavior on small screens. */
+                position: relative; /* Allows the sidebar to scroll normally with the rest of the page. */
+                top: 0;
+                height: auto;
+                max-height: none;
+                overflow-y: visible;
+            }
+        }
+        
+        /* --- Print Styles for Professional Invoice --- */
+        @media print { /* Styles that ONLY apply when the user hits 'Print' (or 'Save as PDF'). */
+            body > div#app { display: none; } /* Hides the entire application interface. */
+            body > #invoicePrintContainer { /* Makes the hidden print container visible for printing. */
+                visibility: visible !important; opacity: 1 !important; display: block !important;
+                position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+                background-color: white !important; box-shadow: none !important; margin: 0; padding: 0;
+            }
+            #invoiceTemplate { width: 100%; margin: 0; padding: 20px; box-shadow: none !important; border-radius: 0 !important; } /* Ensures the invoice fills the page without borders/shadows. */
+        }
+    </style>
+</head>
+<body onload="initApp()"> <!-- Runs the main setup function 'initApp()' as soon as the page loads. -->
+
+    <!-- Main Application Container -->
+    <div id="app" class="flex flex-col min-h-screen antialiased"> <!-- Sets up the main layout as a flexible column spanning the whole screen. -->
+        
+        <!-- Header (Branding and Tabs) -->
+        <header class="flex-shrink-0 card p-4 flex flex-wrap justify-start items-center z-20 sticky top-0 shadow-md"> <!-- The navigation bar at the very top. 'sticky top-0' keeps it visible. -->
+            <!-- Branding -->
+            <h1 class="text-3xl font-extrabold text-blue-600 tracking-tight lg:mr-8 mb-2 lg:mb-0">FinLedger Pro</h1> <!-- The name of the app. CHANGE THIS TEXT for your app's name. -->
+            
+            <!-- Tab Navigation (Centered) -->
+            <nav class="flex space-x-4 sm:space-x-6 overflow-x-auto whitespace-nowrap flex-1 justify-start"> <!-- The container for all tab buttons. -->
+                <!-- Each button has a 'data-tab' attribute that tells the JS which panel to show. -->
+                <button class="tab-button px-2 py-1 text-sm font-medium transition duration-150 ease-in-out border-b-2 border-transparent" data-tab="ledger">Bookkeeping Ledger</button> <!-- Tab 1: Ledger -->
+                <button class="tab-button px-2 py-1 text-sm font-medium transition duration-150 ease-in-out border-b-2 border-transparent" data-tab="analysis">Analysis & Reporting</button> <!-- Tab 2: Analysis -->
+                <button class="tab-button px-2 py-1 text-sm font-medium transition duration-150 ease-in-out border-b-2 border-transparent" data-tab="invoicing">Invoicing</button> <!-- Tab 3: Invoicing -->
+                <button class="tab-button px-2 py-1 text-sm font-medium transition duration-150 ease-in-out border-b-2 border-transparent" data-tab="payroll">Payroll & Capital</button> <!-- Tab 4: Payroll -->
+            </nav>
+        </header>
+
+        <!-- Main Content Area: Input Sidebar (Left) + Report Panel (Right) -->
+        <div class="flex-1 flex flex-col lg:flex-row p-4 lg:p-6 gap-6"> <!-- The main area below the header, divided into two columns on large screens. -->
+            
+            <!-- 1. Aesthetic Input Sidebar (Left, ~1/3rd width) -->
+            <div class="lg:w-1/3 w-full flex-shrink-0"> <!-- Takes 1/3rd width on desktop ('lg:w-1/3') and full width on mobile ('w-full'). -->
+                <div class="card p-6 sidebar-input flex flex-col"> <!-- Applies the custom card style and the sticky sidebar behavior. -->
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b border-gray-200 pb-3 flex items-center">
+                        <i data-lucide="file-plus" class="w-6 h-6 mr-3 text-blue-500"></i> Record Transaction <!-- The title of the input form. CHANGE THIS TITLE. -->
+                    </h2>
+
+                    <!-- Input Form -->
+                    <div id="input-form" class="space-y-5 flex-grow"> <!-- Container for all transaction input fields. -->
+                        
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-600">Date</span> <!-- Label for the date field. -->
+                            <input type="date" id="dateInput" class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 shadow-inner p-3 text-gray-800"> <!-- The Date picker input. -->
+                        </label>
+
+                        <div class="flex space-x-4"> <!-- Container for Type and Category, side-by-side. -->
+                            <label class="block flex-1">
+                                <span class="text-sm font-medium text-gray-600">Type</span> <!-- Label for Type (Income/Expense). -->
+                                <select id="typeSelect" onchange="updateCategoryDropdown(); updateCalculations();" class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 shadow-inner p-3 text-gray-800"> <!-- Dropdown for transaction type. 'onchange' runs JS functions when the value changes. -->
+                                    <option value="Expense">Expense</option> <!-- Option 1: Expense -->
+                                    <option value="Income">Income</option> <!-- Option 2: Income -->
+                                </select>
+                            </label>
+                            <label class="block flex-1">
+                                <span class="text-sm font-medium text-gray-600">Category</span> <!-- Label for the Category dropdown. -->
+                                <select id="categorySelect" onchange="updateCalculations()" class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 shadow-inner p-3 text-gray-800">
+                                    <!-- Options populated by JS dynamically based on the Type selected above. -->
+                                </select>
+                            </label>
+                        </div>
+                        
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-600">Description / Vendor</span> <!-- Label for description. -->
+                            <input type="text" id="descriptionInput" oninput="updateCalculations()" placeholder="e.g., Client Fee, AWS Subscription" class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 shadow-inner p-3 text-gray-800"> <!-- Input for text description. -->
+                        </label>
+
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-600">Amount (Net Value)</span> <!-- Label for the dollar amount. -->
+                            <input type="number" id="amountInput" oninput="updateCalculations()" placeholder="100.00" class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 shadow-inner p-3 text-gray-800"> <!-- Input for numerical amount. -->
+                        </label>
+                    </div>
+
+                    <!-- Calculated Output (Preview Area) -->
+                    <div class="mt-8 p-4 border-2 border-dashed border-blue-200 rounded-xl bg-blue-50"> <!-- Visually appealing box to show calculation preview. -->
+                        <p class="text-base font-semibold text-gray-700 mb-1">Classification Summary</p> <!-- Title for the summary. -->
+                        <p id="calcCategory" class="text-sm font-medium text-blue-600">Category: [Waiting for Input]</p> <!-- Placeholder for the calculated category. -->
+                        <p id="calcValue" class="text-2xl font-extrabold text-gray-800 mt-2">Bookkeeping Value: $0.00</p> <!-- Placeholder for the amount preview. -->
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-6 space-y-3">
+                        <button onclick="addTransaction()" id="recordButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg hover:shadow-xl transition duration-200 flex items-center justify-center" disabled> <!-- Button to save transaction. It's 'disabled' until all fields are valid. -->
+                            <i data-lucide="save" class="w-5 h-5 mr-2"></i> RECORD TRANSACTION
+                        </button>
+                        <button onclick="exportData()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-xl shadow-sm transition duration-200 flex items-center justify-center"> <!-- Button to download data. -->
+                            <i data-lucide="download" class="w-5 h-5 mr-2"></i> Export Ledger (CSV)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Report Panel (Right, ~2/3rd width) -->
+            <div class="lg:w-2/3 w-full flex-shrink-0"> <!-- Takes 2/3rd width on desktop and full width on mobile. -->
+                <div id="report-panel" class="space-y-6">
+                
+                    <!-- 1. Ledger Tab CONTENT -->
+                    <div id="ledger" class="tab-content"> <!-- This is the content that shows when the 'Ledger' tab is active. -->
+                        <h2 class="text-2xl font-bold mb-4">Transaction History Ledger</h2> <!-- Ledger section title. -->
+                        <div class="card p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200"> <!-- The main table structure. -->
+                                    <thead class="bg-gray-50"> <!-- Table header section. -->
+                                        <tr>
+                                            <!-- Table Column Headings - CHANGE THESE TEXT LABELS if you need different columns. -->
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-xl">ID</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value ($)</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-xl">Category</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ledgerBody" class="bg-white divide-y divide-gray-100"> <!-- Body where JS inserts the transaction rows. -->
+                                        <!-- Transactions will be inserted here by JavaScript's renderLedger() function. -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Analysis Tab CONTENT (Charts, P&L, and Balance Sheet) -->
+                    <div id="analysis" class="tab-content"> <!-- This is the content that shows when the 'Analysis' tab is active. -->
+                        <h2 class="text-2xl font-bold mb-4">Financial Reports & Visuals</h2> <!-- Analysis section title. -->
+                        
+                        <!-- Summary Cards (Quick Overview) -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"> <!-- Uses a responsive grid for 3 cards. -->
+                            <!-- Card 1: Income -->
+                            <div class="card p-6 border-l-4 border-green-500"> <!-- Green border for income. -->
+                                <p class="text-sm font-medium text-gray-500">Total Income (Net)</p>
+                                <p id="summaryIncome" class="text-3xl font-extrabold text-green-600 mt-1">$0.00</p>
+                            </div>
+                            <!-- Card 2: Expense -->
+                            <div class="card p-6 border-l-4 border-red-500"> <!-- Red border for expense. -->
+                                <p class="text-sm font-medium text-gray-500">Total Expense (Net)</p>
+                                <p id="summaryExpense" class="text-3xl font-extrabold text-red-600 mt-1">$0.00</p>
+                            </div>
+                            <!-- Card 3: Net Profit/Loss -->
+                            <div class="card p-6 border-l-4 border-blue-500"> <!-- Blue border for net result. -->
+                                <p class="text-sm font-medium text-gray-500">Net Profit / Loss</p>
+                                <p id="summaryNet" class="text-3xl font-extrabold text-blue-600 mt-1">$0.00</p>
+                            </div>
+                        </div>
+
+                        <!-- Chart Row -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"> <!-- Grid for the charts. -->
+                            <!-- Chart 1: Net Flow Doughnut Chart -->
+                            <div class="card p-6 lg:col-span-1">
+                                <h3 class="text-lg font-bold mb-4">Total Net Flow</h3> <!-- Chart title. -->
+                                <div class="chart-container w-full h-64 flex justify-center items-center"><canvas id="netFlowChart"></canvas></div> <!-- Canvas area for the doughnut chart. -->
+                            </div>
+
+                            <!-- Chart 2: Expense Breakdown Bar Chart -->
+                            <div class="card p-6 lg:col-span-2">
+                                <h3 class="text-lg font-bold mb-4">Expense Breakdown by Category</h3> <!-- Chart title. -->
+                                <div class="chart-container w-full lg:h-64 h-64"><canvas id="expenseCategoryChart"></canvas></div> <!-- Canvas area for the bar chart. -->
+                            </div>
+                        </div>
+                        
+                        <!-- P&L and Balance Sheet -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> <!-- Grid for the two main financial statements. -->
+                            <!-- P&L Statement Section -->
+                            <div id="PnLStatement" class="card p-6">
+                                <h3 class="text-xl font-extrabold text-blue-700 mb-4 border-b border-gray-200 pb-2">Profit & Loss Statement (YTD)</h3> <!-- P&L Title. -->
+                                <div id="pnlBody" class="overflow-x-auto"></div> <!-- Area where P&L table is inserted by JS. -->
+                            </div>
+                            
+                            <!-- Balance Sheet Section -->
+                            <div id="BalanceSheet" class="card p-6">
+                                <h3 class="text-xl font-extrabold text-purple-700 mb-4 border-b border-gray-200 pb-2">Balance Sheet <span class="text-xs text-gray-500">(A=L+E)</span></h3> <!-- Balance Sheet Title. -->
+                                <div id="bsBody" class="overflow-x-auto"></div> <!-- Area where Balance Sheet table is inserted by JS. -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Invoicing Tab CONTENT -->
+                    <div id="invoicing" class="tab-content"> <!-- This is the content that shows when the 'Invoicing' tab is active. -->
+                        <h2 class="text-2xl font-bold mb-4">Professional Invoice Generation</h2>
+                        <div class="card p-6">
+                            <p class="text-gray-600 mb-6">Create a professional, print-optimized invoice that can be saved as a **PDF**.</p>
+                            
+                            <!-- Input fields for Invoice Details -->
+                            <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-2">Details</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-xl bg-blue-50 mb-8">
+                                <!-- Your Company Name (Pre-filled, CHANGE the 'value' below for your default company name) -->
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Your Company Name</span><input type="text" id="companyName" oninput="updateInvoiceDisplay()" value="FinLedger Pro Services" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                                <!-- Your Company Address (Pre-filled, CHANGE the 'value' below) -->
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Your Company Address</span><input type="text" id="companyAddress" oninput="updateInvoiceDisplay()" value="123 Financial Lane, Tech City, USA" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                                <!-- Client Name -->
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Client Name</span><input type="text" id="invoiceClientName" oninput="updateInvoiceDisplay()" placeholder="Acme Corp" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                                <!-- Client Email -->
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Client Email</span><input type="email" id="invoiceClientEmail" oninput="updateInvoiceDisplay()" placeholder="client@corp.com" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                            </div>
+
+                            <!-- Input fields for Invoice Items/Pricing -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 items-end">
+                                <label class="block md:col-span-2"><span class="text-sm font-medium text-gray-600">Service Description</span><input type="text" id="invoiceDescription" oninput="updateInvoiceDisplay()" placeholder="Consulting Services (30 Hrs)" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Net Price ($)</span><input type="number" id="invoiceNetPrice" oninput="updateInvoiceCalculations(); updateInvoiceDisplay();" placeholder="5000.00" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label>
+                                <label class="block"><span class="text-sm font-medium text-gray-600">Tax Rate (%)</span><input type="number" id="invoiceGstRate" oninput="updateInvoiceCalculations(); updateInvoiceDisplay();" value="15" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white shadow-sm p-2 text-gray-800"></label> <!-- Default Tax Rate is 15. CHANGE the 'value' here if your standard tax is different. -->
+                                <div id="invoiceCalcOutput" class="md:col-span-4 text-sm text-gray-700 font-medium p-3 bg-yellow-100 rounded-lg">
+                                    Enter details to calculate Tax/Total.
+                                </div>
+                            </div>
+
+                            <!-- Invoice Preview Area -->
+                            <h3 class="text-lg font-semibold text-gray-700 mb-3">Invoice Preview:</h3>
+                            <div id="invoicePreview" class="bg-gray-50 p-6 border border-gray-300 rounded-lg shadow-inner min-h-80 overflow-x-auto">
+                                <!-- Invoice content populated by updateInvoiceDisplay() -->
+                            </div>
+
+                            <div class="mt-6 text-right">
+                                <button onclick="downloadInvoice()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-200 flex items-center justify-center ml-auto"> <!-- Button to trigger the print/PDF save dialogue. -->
+                                    <i data-lucide="printer" class="w-5 h-5 mr-2"></i> Print / Save as PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Payroll & Capital Tab CONTENT -->
+                    <div id="payroll" class="tab-content"> <!-- This is the content that shows when the 'Payroll' tab is active. -->
+                        <h2 class="text-2xl font-bold mb-4">Payroll & Capital Management</h2>
+                        
+                        <!-- Payroll Section -->
+                        <div class="card p-6 mb-6">
+                            <h3 class="text-xl font-extrabold text-green-700 mb-4 border-b border-gray-200 pb-2">Employee Payroll</h3>
+                            <p class="text-sm text-gray-600 mb-4">Process payroll to generate **Salaries Expense** and **Tax Payable Liability**.</p>
+                            
+                            <!-- Employee Input Form -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border p-4 rounded-xl bg-green-50 mb-6">
+                                <input type="text" id="employeeName" placeholder="Employee Name" class="p-3 border rounded-lg border-gray-300 bg-white text-gray-800 md:col-span-1">
+                                <input type="number" id="employeeSalary" placeholder="Annual Salary (e.g., 60000)" class="p-3 border rounded-lg border-gray-300 bg-white text-gray-800">
+                                <input type="number" id="employeeTaxRate" value="15" placeholder="Tax Rate (%)" class="p-3 border rounded-lg border-gray-300 bg-white text-gray-800"> <!-- Default Tax Rate for employee. CHANGE the 'value' here. -->
+                                <button onclick="addEmployee()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl">Add Employee</button>
+                            </div>
+
+                            <!-- Employee List Area -->
+                            <div id="employeeList" class="space-y-3 mt-4">
+                                <!-- Employee cards go here, inserted by JS. -->
+                            </div>
+
+                            <h4 class="text-base font-bold text-gray-800 mt-8 mb-4 border-t border-gray-200 pt-4">Run Monthly Payroll</h4>
+                            <button onclick="runMonthlyPayroll()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center"> <!-- Button to process payroll. -->
+                                <i data-lucide="dollar-sign" class="w-5 h-5 mr-2"></i> Process Payroll for All Employees
+                            </button>
+                        </div>
+
+                        <!-- Capital Section -->
+                        <div class="card p-6">
+                            <h3 class="text-xl font-extrabold text-purple-700 mb-4 border-b border-gray-200 pb-2">Equity and Debt Flow</h3>
+                            <p class="text-sm text-gray-600 mb-4">Record capital movements that impact the **Balance Sheet**.</p>
+                            
+                            <!-- Capital Input Form -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-xl bg-purple-50">
+                                <select id="capitalType" class="p-3 border rounded-lg border-gray-300 bg-white text-gray-800"> <!-- Dropdown for capital type (Equity or Debt). -->
+                                    <option value="Equity-Contribution">Owner Contribution (Equity +)</option> <!-- Equity injection. -->
+                                    <option value="Equity-Drawing">Owner Drawing (Equity -)</option> <!-- Owner taking money out. -->
+                                    <option value="Debt-Loan">Loan Received (Debt +)</option> <!-- New loan increases debt. -->
+                                    <option value="Debt-Repayment">Loan Repayment (Debt -)</option> <!-- Repaying a loan decreases debt. -->
+                                </select>
+                                <input type="number" id="capitalAmount" placeholder="Amount ($)" class="p-3 border rounded-lg border-gray-300 bg-white text-gray-800">
+                                <button onclick="recordCapital()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl">Record Flow</button>
+                            </div>
+
+                            <!-- Capital History Area -->
+                            <h4 class="text-base font-bold text-gray-800 mt-6 mb-3 border-t border-gray-200 pt-4">Capital Transaction History</h4>
+                            <div id="capitalHistory" class="text-sm space-y-2 max-h-48 overflow-y-auto">
+                                <!-- Capital transactions list, inserted by JS. -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden Container for Printing ONLY (Ensures clean PDF generation) -->
+    <div id="invoicePrintContainer" style="visibility: hidden; opacity: 0; position: fixed; top: 0; left: 0;"> <!-- Initially hidden from view. -->
+        <div id="invoiceTemplate" class="p-10 bg-white shadow-xl max-w-4xl mx-auto my-10 border border-gray-200">
+            <!-- This content is dynamically generated by updateInvoiceDisplay() when the print button is clicked. -->
+        </div>
+    </div>
+
+    <script>
+        // --- JAVASCRIPT: Application Data and Core Functions ---
+
+        // Global data store. Uses localStorage (browser storage) to save data between sessions.
+        // If data exists in localStorage, it loads it; otherwise, it starts with an empty array or zero.
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || []; // Stores the main list of all income and expense items.
+        let employees = JSON.parse(localStorage.getItem('employees')) || []; // Stores the list of employees for payroll.
+        let capitalTransactions = JSON.parse(localStorage.getItem('capitalTransactions')) || []; // Stores owner contributions, drawings, and loans.
+        
+        let payrollLiability = parseFloat(localStorage.getItem('payrollLiability')) || 0; // Stores the cumulative amount of tax owed (Liability).
+        
+        let netFlowChartInstance; // Variable to hold the Chart.js instance for the Net Flow chart.
+        let expenseCategoryChartInstance; // Variable to hold the Chart.js instance for the Expense Breakdown chart.
+
+        // Expanded Category Definitions (The categories that appear in the dropdowns)
+        const categories = { // Object defining the possible categories for Income and Expense.
+            Income: [ // Categories for Income.
+                '-- Auto-Classify --', 'Client Service Fee', 'Product Sales', 'Subscription Revenue', // Default options. CHANGE THESE to match your business's revenue sources.
+                'Interest Income', 'Grants & Subsidies', 'Other Income'
+            ],
+            Expense: [ // Categories for Expense.
+                '-- Auto-Classify --', 'Salaries & Wages', 'Software & Subscriptions', // Default options. CHANGE THESE to match your business's expenses.
+                'Office Rent & Utilities', 'Marketing & Advertising', 'Travel & Lodging',
+                'Professional Services (Legal/Acct)', 'Equipment Purchase', 'General Supplies',
+                'Other Expense'
+            ]
+        };
+        
+        // --- UI & UX Logic ---
+
+        /**
+         * The main initialization function: runs once when the page loads (see <body> tag).
+         */
+        function initApp() { // The main setup function.
+            // Render Lucide icons
+            if (typeof lucide !== 'undefined') { // Checks if the Lucide icon library loaded successfully.
+                lucide.createIcons(); // Renders the <i data-lucide="..."> tags into actual SVG icons.
+            }
+
+            // Set today's date
+            document.getElementById('dateInput').value = new Date().toISOString().slice(0, 10); // Automatically sets the date input to today's date.
+            
+            // Set up event listeners for tabs (makes the tabs clickable)
+            document.querySelectorAll('.tab-button').forEach(button => { // Finds all elements with the class 'tab-button'.
+                button.addEventListener('click', () => switchTab(button.dataset.tab)); // Attaches a click event that calls 'switchTab' with the button's data-tab value.
+            });
+            
+            // Initial render functions to populate the screen with saved data:
+            updateCategoryDropdown(); // Fills the Category dropdown based on the default 'Expense' type.
+            switchTab('ledger'); // Activates the first tab ('Ledger') by default.
+            renderLedger(); // Draws the transaction table with all saved data.
+            updateSummaryAndChart(); // Calculates totals and draws the charts.
+            updateCalculations(); // Updates the input preview section (starts empty).
+            updateInvoiceCalculations(); // Updates the invoice calculation object.
+            updateInvoiceDisplay(); // Renders the invoice preview.
+            renderEmployeeList(); // Shows the saved list of employees.
+            renderCapitalHistory(); // Shows the saved capital flow history.
+        }
+
+        /**
+         * Switches the active tab content and button styling.
+         * @param {string} tabId - The ID of the tab content to show (e.g., 'ledger', 'analysis').
+         */
+        function switchTab(tabId) { 
+            document.querySelectorAll('.tab-content').forEach(content => { // Finds and hides all tab content blocks.
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => { // Finds and removes the 'active' styling from all buttons.
+                button.classList.remove('active');
+            });
+
+            document.getElementById(tabId).classList.add('active'); // Shows the content block matching the requested tabId.
+            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active'); // Applies the blue active style to the correct button.
+            
+            // Special update for the Analysis tab: ensure charts are redrawn when viewing the tab.
+            if (tabId === 'analysis') { 
+                updateSummaryAndChart(); 
+            }
+            // Special update for Payroll tab: ensure lists are current.
+            if (tabId === 'payroll') { 
+                renderEmployeeList();
+                renderCapitalHistory();
+            }
+        }
+        
+        /**
+         * Populates the Category dropdown based on whether 'Income' or 'Expense' is selected.
+         */
+        function updateCategoryDropdown() {
+            const type = document.getElementById('typeSelect').value; // Gets the current value ('Income' or 'Expense') from the Type dropdown.
+            const categorySelect = document.getElementById('categorySelect'); // Gets the Category dropdown element.
+            categorySelect.innerHTML = ''; // Clears all existing options from the Category dropdown.
+
+            const relevantCategories = categories[type] || []; // Gets the list of categories (from the 'categories' object at the top) based on the 'type'.
+
+            relevantCategories.forEach(category => { // Loops through each category in the list.
+                const option = document.createElement('option'); // Creates a new <option> element.
+                option.value = category; // Sets the hidden value of the option.
+                option.textContent = category; // Sets the text the user sees in the dropdown.
+                categorySelect.appendChild(option); // Adds the new option to the dropdown.
+            });
+            updateCalculations(); // Recalculates the preview after updating categories.
+        }
+
+        // --- Core Accounting & UI Logic (Transaction Ledger) ---
+        
+        /**
+         * Determines the final accounting category, prioritizing user selection but falling back to keyword matching.
+         * You can add or modify keywords here for better auto-classification.
+         * @param {string} description - The user-entered text description.
+         * @param {string} type - 'Income' or 'Expense'.
+         * @param {string} userCategory - The category manually selected by the user.
+         * @returns {string} The finalized category string.
+         */
+        function getFinalCategory(description, type, userCategory) {
+            if (userCategory && userCategory !== '-- Auto-Classify --') { // If the user picked a specific category, use it.
+                return userCategory;
+            }
+            const desc = description.toLowerCase(); // Converts description to lowercase for case-insensitive matching.
+            if (type === 'Income') { // Logic for Income auto-classification.
+                if (desc.includes('client') || desc.includes('fee')) return 'Client Service Fee'; // E.g., if description contains 'client' or 'fee'.
+                if (desc.includes('sale') || desc.includes('shop')) return 'Product Sales'; // E.g., if description contains 'sale'.
+                if (desc.includes('interest')) return 'Interest Income'; // E.g., if description contains 'interest'.
+                return 'Other Income'; // Default if no keywords match.
+            } else { // Logic for Expense auto-classification.
+                if (desc.includes('salary') || desc.includes('wage') || desc.includes('payroll')) return 'Salaries & Wages'; // E.g., if description contains 'salary'.
+                if (desc.includes('adobe') || desc.includes('zoom') || desc.includes('saas') || desc.includes('software') || desc.includes('subscription')) return 'Software & Subscriptions'; // E.g., if description contains 'adobe' or 'subscription'.
+                if (desc.includes('rent') || desc.includes('utility') || desc.includes('electric')) return 'Office Rent & Utilities'; // E.g., if description contains 'rent'.
+                if (desc.includes('ad') || desc.includes('marketing') || desc.includes('facebook')) return 'Marketing & Advertising';
+                if (desc.includes('legal') || desc.includes('accounting') || desc.includes('tax')) return 'Professional Services (Legal/Acct)';
+                return 'Other Expense'; // Default if no keywords match.
+            }
+        }
+
+        /**
+         * Updates the visual summary in the input sidebar based on user typing.
+         */
+        function updateCalculations() {
+            const amountStr = document.getElementById('amountInput').value.trim(); // Gets the amount text entered.
+            const userCategory = document.getElementById('categorySelect').value; // Gets the selected category.
+            const description = document.getElementById('descriptionInput').value.trim(); // Gets the description.
+            const type = document.getElementById('typeSelect').value; // Gets the type (Income/Expense).
+            const amount = parseFloat(amountStr); // Tries to convert the amount text to a decimal number.
+            const saveButton = document.getElementById('recordButton'); // Gets the save button element.
+
+            // Resetting the preview and button state:
+            document.getElementById('calcCategory').textContent = 'Category: [Waiting for Input]';
+            document.getElementById('calcValue').textContent = 'Bookkeeping Value: $0.00';
+            saveButton.disabled = true; // Disables the button by default until valid input is checked.
+
+            if (!amountStr || isNaN(amount) || amount <= 0) return; // If amount is empty, not a number, or zero/negative, stop here.
+
+            const category = getFinalCategory(description, type, userCategory); // Determines the final category.
+
+            // Updating the preview display:
+            document.getElementById('calcCategory').textContent = `Category: ${category}`;
+            document.getElementById('calcValue').textContent = `Bookkeeping Value: $${amount.toFixed(2)}`; // Displays the amount formatted to 2 decimal places.
+
+            if (category !== '-- Auto-Classify --' && amount > 0) { // If a valid category and positive amount exist:
+                 saveButton.disabled = false; // Enables the 'RECORD TRANSACTION' button.
+            }
+        }
+
+        /**
+         * Saves the transaction data to the global array and localStorage.
+         */
+        function addTransaction() {
+            const description = document.getElementById('descriptionInput').value.trim();
+            const amountStr = document.getElementById('amountInput').value.trim();
+            const type = document.getElementById('typeSelect').value;
+            const userCategory = document.getElementById('categorySelect').value;
+            const amount = parseFloat(amountStr);
+            
+            // Simple validation check before saving.
+            if (!description || !amount || amount <= 0) {
+                return showMessage("Input Error", "Please fill in all transaction details with a valid positive amount.", "bg-red-500"); // Shows an error message if inputs are missing.
+            }
+            
+            const finalCategory = getFinalCategory(description, type, userCategory); // Determines the final category using the logic above.
+
+            const newTransaction = { // Creates a new object to store the transaction details.
+                id: Math.random().toString(36).substring(2, 10), // Generates a short, unique ID (used in the Ledger table).
+                date: document.getElementById('dateInput').value, // Gets the date.
+                type: type, 
+                description: description,
+                value: amount,
+                category: finalCategory,
+                source: 'Manual' // Identifies this transaction as manually entered.
+            };
+
+            transactions.push(newTransaction); // Adds the new transaction to the global array.
+            localStorage.setItem('transactions', JSON.stringify(transactions)); // Saves the ENTIRE updated array back to the browser's storage.
+            
+            renderLedger(); // Refreshes the table view.
+            updateSummaryAndChart(); // Refreshes the analysis charts and summaries.
+            
+            // Clear the input fields for the next entry:
+            document.getElementById('descriptionInput').value = '';
+            document.getElementById('amountInput').value = '';
+            document.getElementById('typeSelect').value = 'Expense'; // Resets Type to default.
+            updateCategoryDropdown(); // Resets the categories dropdown.
+            updateCalculations(); // Updates the preview area (should now show $0.00).
+
+            showMessage("Recorded", `Transaction ${newTransaction.id} saved successfully.`, "bg-blue-600"); // Shows a success notification.
+        }
+
+        /**
+         * Re-renders the entire transaction table in the Ledger tab.
+         */
+        function renderLedger() {
+            const body = document.getElementById('ledgerBody'); // Gets the <tbody> element of the transaction table.
+            body.innerHTML = ''; // Clears the table body completely before drawing new rows.
+
+            // Sorts transactions by date (newest first). CHANGE 'b.date - a.date' to 'a.date - b.date' to sort oldest first.
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => { 
+                const row = body.insertRow(); // Creates a new row (<tr>).
+                row.className = 'text-sm text-gray-700 hover:bg-gray-50 transition duration-100'; // Adds styling to the row.
+
+                // Insert data into cells (<td>):
+                row.insertCell().textContent = t.id;
+                row.insertCell().textContent = t.date;
+                
+                const typeCell = row.insertCell();
+                // Sets text color based on Income (green) or Expense (red).
+                typeCell.className = 'px-4 py-3 font-medium ' + (t.type === 'Income' ? 'text-green-600' : 'text-red-600');
+                typeCell.textContent = t.type;
+
+                row.insertCell().textContent = t.description;
+                
+                const valueCell = row.insertCell();
+                valueCell.className = 'px-4 py-3 text-right font-semibold';
+                valueCell.textContent = `$${t.value.toFixed(2)}`; // Formats the dollar amount to 2 decimal places.
+                
+                row.insertCell().textContent = t.category + (t.source === 'Payroll' ? ' (Auto)' : ''); // Adds '(Auto)' tag for payroll entries.
+            });
+        }
+        
+        // --- Analysis & Reporting Logic (P&L and Balance Sheet) ---
+        
+        /**
+         * Calculates the overall income, expense, and net profit.
+         * @returns {object} An object containing totalIncome, totalExpense, and netProfit.
+         */
+        function calculateNetProfit() {
+            let totalIncome = 0; // Initialize total income counter.
+            let totalExpense = 0; // Initialize total expense counter.
+            transactions.forEach(t => { // Loops through every transaction.
+                if (t.type === 'Income') {
+                    totalIncome += t.value; // Add to income.
+                } else {
+                    totalExpense += t.value; // Add to expense.
+                }
+            });
+            return { totalIncome, totalExpense, netProfit: totalIncome - totalExpense }; // Returns the calculated totals.
+        }
+
+        /**
+         * Updates all summary cards and redraws both Chart.js graphs.
+         */
+        function updateSummaryAndChart() {
+            const { totalIncome, totalExpense, netProfit } = calculateNetProfit(); // Get the main totals.
+            
+            const expenseBreakdown = {}; // Object to hold expense totals by category.
+            transactions.forEach(t => {
+                if (t.type === 'Expense') {
+                    const category = t.category;
+                    // Safely adds the value to the correct category total.
+                    expenseBreakdown[category] = (expenseBreakdown[category] || 0) + t.value; 
+                }
+            });
+
+            // Update Summary Cards HTML:
+            document.getElementById('summaryIncome').textContent = `$${totalIncome.toFixed(2)}`;
+            document.getElementById('summaryExpense').textContent = `$${totalExpense.toFixed(2)}`;
+            
+            const netEl = document.getElementById('summaryNet');
+            netEl.textContent = `$${Math.abs(netProfit).toFixed(2)} ${netProfit >= 0 ? '(Profit)' : '(Loss)'}`; // Displays Profit or Loss status.
+            
+            // Adjusts the color of the Net Profit card based on the result.
+            netEl.classList.remove('text-green-600', 'text-red-600', 'text-blue-600');
+            netEl.classList.add(netProfit >= 0 ? 'text-green-600' : 'text-red-600'); // Green for profit, Red for loss.
+            if (netProfit === 0) netEl.classList.add('text-blue-600');
+            
+            // Redraw charts and financial statements:
+            renderNetFlowChart({ income: totalIncome, expense: totalExpense }); // Draw the Doughnut chart.
+            renderExpenseCategoryChart(expenseBreakdown); // Draw the Bar chart.
+            renderProfitAndLoss({ totalIncome, totalExpense, netProfit, expenseBreakdown }); // Draw the P&L statement.
+            renderBalanceSheet(netProfit); // Draw the Balance Sheet statement.
+        }
+
+        /**
+         * Renders the Balance Sheet table (Assets = Liabilities + Equity).
+         * @param {number} netProfit - The result from the P&L statement (Retained Earnings).
+         */
+        function renderBalanceSheet(netProfit) {
+            let currentCash = 0; // Proxy for the cash balance (simplistic: all income minus all expense).
+            let totalDebt = 0; // Total outstanding debt from loans.
+            let ownerEquity = 0; // Total owner contributions minus drawings.
+            
+            transactions.forEach(t => { // Update Cash based on P&L activities.
+                if (t.type === 'Income') { currentCash += t.value; } else { currentCash -= t.value; }
+            });
+            
+            capitalTransactions.forEach(t => { // Update Cash, Debt, and Equity based on Capital movements.
+                const amount = t.amount;
+                if (t.type === 'Equity-Contribution') {
+                    ownerEquity += amount; currentCash += amount; // Cash increases, Equity increases.
+                } else if (t.type === 'Equity-Drawing') {
+                    ownerEquity -= amount; currentCash -= amount; // Cash decreases, Equity decreases.
+                } else if (t.type === 'Debt-Loan') {
+                    totalDebt += amount; currentCash += amount; // Cash increases, Debt increases.
+                } else if (t.type === 'Debt-Repayment') {
+                    totalDebt -= amount; currentCash -= amount; // Cash decreases, Debt decreases.
+                }
+            });
+
+            const totalLiabilities = payrollLiability + totalDebt; // Liabilities = Tax Payable + Loans.
+            const totalEquity = netProfit + ownerEquity; // Equity = Retained Earnings (P&L) + Owner Capital.
+            const totalAssets = currentCash; // Assets = Cash (Simplification).
+            
+            // Checks if the fundamental accounting equation holds (Assets = Liabilities + Equity).
+            const balanceCheck = totalAssets.toFixed(2) === (totalLiabilities + totalEquity).toFixed(2); 
+            const balanceStyle = balanceCheck ? 'border-green-600' : 'border-red-600'; // Green if balanced, Red if not.
+            const balanceText = balanceCheck ? 'Balanced' : 'IMBALANCED';
+
+            // Constructs the HTML table for the Balance Sheet:
+            let html = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <!-- ASSETS -->
+                    <tbody>
+                        <tr class="bg-gray-100 border-t-2 border-green-500">
+                            <td class="px-4 py-3 text-lg font-bold text-gray-800">TOTAL ASSETS</td>
+                            <td class="px-4 py-3 text-right text-lg font-bold text-green-700">$${totalAssets.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-2 text-sm text-gray-700 italic">Cash/Bank Balance (Proxy)</td>
+                            <td class="px-4 py-2 text-right text-sm text-gray-700">$${currentCash.toFixed(2)}</td>
+                        </tr>
+                        <tr><td colspan="2" class="h-4"></td></tr>
+                    </tbody>
+
+                    <!-- LIABILITIES -->
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="bg-red-50">
+                            <td class="px-4 py-2 text-base font-bold text-red-700">TOTAL LIABILITIES</td>
+                            <td class="px-4 py-2 text-right text-base font-bold text-red-700">$${totalLiabilities.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-2 text-sm text-gray-700 italic">Payroll Tax Payable</td>
+                            <td class="px-4 py-2 text-right text-sm text-gray-700">$${payrollLiability.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-2 text-sm text-gray-700 italic">Loans / Debt</td>
+                            <td class="px-4 py-2 text-right text-sm text-gray-700">$${totalDebt.toFixed(2)}</td>
+                        </tr>
+                        <tr><td colspan="2" class="h-4"></td></tr>
+                    </tbody>
+                    
+                    <!-- EQUITY -->
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="bg-blue-50">
+                            <td class="px-4 py-2 text-base font-bold text-blue-700">TOTAL EQUITY</td>
+                            <td class="px-4 py-2 text-right text-base font-bold text-blue-700">$${totalEquity.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-2 text-sm text-gray-700 italic">Retained Earnings (Net Profit)</td>
+                            <td class="px-4 py-2 text-right text-sm text-gray-700">$${netProfit.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-2 text-sm text-gray-700 italic">Owner Capital (Contributions/Drawings)</td>
+                            <td class="px-4 py-2 text-right text-sm text-gray-700">$${ownerEquity.toFixed(2)}</td>
+                        </tr>
+                        <tr><td colspan="2" class="h-4"></td></tr>
+                    </tbody>
+
+                    <!-- BALANCE CHECK FOOTER -->
+                    <tfoot class="border-t-4 ${balanceStyle}">
+                        <tr>
+                            <td class="px-4 py-4 text-xl font-extrabold text-gray-900">BALANCE SHEET CHECK</td>
+                            <td class="px-4 py-4 text-right text-xl font-extrabold ${balanceCheck ? 'text-green-800' : 'text-red-800'}">
+                                ${balanceText}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+
+            document.getElementById('bsBody').innerHTML = html; // Insert the generated HTML into the Balance Sheet area.
+        }
+
+        /**
+         * Renders the Profit and Loss Statement table.
+         */
+        function renderProfitAndLoss(data) {
+            // Filter out empty or unclassified expenses for a clean report.
+            const expenseKeys = Object.keys(data.expenseBreakdown).filter(k => k !== '-- Auto-Classify --' && data.expenseBreakdown[k] > 0);
+            // Sort expenses alphabetically for a professional look.
+            const sortedExpenses = expenseKeys.sort().map(key => ({
+                category: key,
+                amount: data.expenseBreakdown[key]
+            }));
+            
+            // Constructs the HTML table for the P&L:
+            let html = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <!-- INCOME SECTION -->
+                    <tbody>
+                        <tr class="bg-gray-100 border-t-2 border-green-500">
+                            <td class="px-4 py-3 text-lg font-bold text-gray-800">TOTAL REVENUE / INCOME</td>
+                            <td class="px-4 py-3 text-right text-lg font-bold text-green-700">$${data.totalIncome.toFixed(2)}</td>
+                        </tr>
+                        <tr><td colspan="2" class="h-4"></td></tr>
+                    </tbody>
+
+                    <!-- EXPENSE SECTION -->
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="bg-red-50">
+                            <td colspan="2" class="px-4 py-2 text-base font-bold text-red-700">OPERATING EXPENSES</td>
+                        </tr>
+                        ${sortedExpenses.length > 0 ? sortedExpenses.map(item => `
+                            <tr>
+                                <td class="px-6 py-2 text-sm text-gray-700 italic">${item.category}</td>
+                                <td class="px-4 py-2 text-right text-sm text-gray-700">($${item.amount.toFixed(2)})</td>
+                            </tr>
+                        `).join('') : `
+                            <tr>
+                                <td class="px-6 py-2 text-sm text-gray-500 italic">No recorded expenses in categories.</td>
+                                <td class="px-4 py-2 text-right text-sm text-gray-500">($0.00)</td>
+                            </tr>
+                        `}
+                        <tr class="bg-gray-100 border-t border-gray-300">
+                            <td class="px-4 py-2 font-bold text-gray-800">Total Expenses</td>
+                            <td class="px-4 py-2 text-right font-bold text-red-700">($${data.totalExpense.toFixed(2)})</td>
+                        </tr>
+                        <tr><td colspan="2" class="h-4"></td></tr>
+                    </tbody>
+
+                    <!-- NET PROFIT SECTION -->
+                    <tfoot class="border-t-4 border-blue-600">
+                        <tr>
+                            <td class="px-4 py-4 text-xl font-extrabold text-gray-900">NET PROFIT / LOSS</td>
+                            <td class="px-4 py-4 text-right text-2xl font-extrabold ${data.netProfit >= 0 ? 'text-green-800' : 'text-red-800'}">
+                                $${data.netProfit.toFixed(2)}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+            document.getElementById('pnlBody').innerHTML = html; // Insert the generated HTML into the P&L area.
+        }
+
+        // --- Chart Rendering (Light Mode Optimized) ---
+        
+        /**
+         * Returns standard configuration settings for Chart.js, optimized for light mode.
+         * CHANGE the colors here if you want to change the chart look (e.g., change 'fontColor' to '#0000FF' for blue text).
+         */
+        function getChartConfig() {
+            return {
+                fontColor: '#1f2937', // Dark text color for labels/titles.
+                gridColor: 'rgba(209, 213, 219, 0.5)', // Light gray, semi-transparent grid lines.
+            };
+        }
+
+        /**
+         * Draws the Net Flow Doughnut Chart (Income vs. Expense).
+         */
+        function renderNetFlowChart(data) { 
+            if (netFlowChartInstance) netFlowChartInstance.destroy(); // Destroy any existing chart instance to prevent errors.
+            const config = getChartConfig();
+            const ctx = document.getElementById('netFlowChart').getContext('2d'); // Gets the canvas context to draw on.
+            netFlowChartInstance = new Chart(ctx, { 
+                type: 'doughnut', // Sets chart type.
+                data: { 
+                    labels: ['Income Total', 'Expense Total'], // Labels for the slices.
+                    datasets: [{ 
+                        data: [data.income.toFixed(2), data.expense.toFixed(2)], // The values for the slices.
+                        backgroundColor: ['#10b981', '#ef4444'], // Green for Income, Red for Expense. CHANGE THESE COLORS.
+                        hoverOffset: 12, 
+                        borderWidth: 0, 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    cutout: '70%', // Makes it a doughnut chart (70% empty center).
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: config.fontColor } }, // Legend below the chart.
+                        tooltip: { callbacks: { label: (context) => `${context.label}: $${context.formattedValue}` } } // Custom tooltip format.
+                    } 
+                } 
+            });
+        }
+        
+        /**
+         * Draws the Expense Breakdown Horizontal Bar Chart.
+         */
+        function renderExpenseCategoryChart(data) { 
+            // Filter data to only include categories with actual expense values greater than zero.
+            const filteredData = Object.entries(data).filter(([key, value]) => key !== '-- Auto-Classify --' && value > 0);
+            const labels = filteredData.map(([key]) => key); // Extract category names as labels.
+            const values = filteredData.map(([key, value]) => value); // Extract amounts as values.
+            
+            if (expenseCategoryChartInstance) expenseCategoryChartInstance.destroy(); // Destroy existing chart instance.
+            const config = getChartConfig();
+            const ctx = document.getElementById('expenseCategoryChart').getContext('2d');
+            
+            expenseCategoryChartInstance = new Chart(ctx, { 
+                type: 'bar', // Sets chart type.
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        label: 'Expense Allocation', 
+                        data: values, 
+                        backgroundColor: '#3b82f6', // Blue color for bars. CHANGE THIS COLOR.
+                        borderRadius: 4, 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    indexAxis: 'y', // Makes it a horizontal bar chart.
+                    scales: { 
+                        x: { beginAtZero: true, ticks: { color: config.fontColor }, grid: { color: config.gridColor } },
+                        y: { ticks: { color: config.fontColor }, grid: { color: config.gridColor } }
+                    }, 
+                    plugins: { 
+                        legend: { display: false }, // Hides the legend as there is only one dataset.
+                        tooltip: { callbacks: { label: (context) => `Expense: $${context.formattedValue}` } } 
+                    } 
+                } 
+            });
+        }
+        
+        // --- Payroll & Capital Logic ---
+
+        /**
+         * Adds a new employee to the system.
+         */
+        function addEmployee() {
+            const name = document.getElementById('employeeName').value.trim();
+            const salary = parseFloat(document.getElementById('employeeSalary').value); // Annual salary.
+            const taxRate = parseFloat(document.getElementById('employeeTaxRate').value) / 100; // Tax rate converted to decimal (e.g., 15% becomes 0.15).
+
+            // Validation check.
+            if (!name || isNaN(salary) || salary <= 0 || isNaN(taxRate) || taxRate < 0) {
+                return showMessage("Input Error", "Please enter valid employee details.", "bg-red-500");
+            }
+            
+            const newEmployee = { // Creates the employee object.
+                id: Math.random().toString(36).substring(2, 6),
+                name: name,
+                annualSalary: salary,
+                taxRate: taxRate
+            };
+
+            employees.push(newEmployee); // Adds to the employee array.
+            localStorage.setItem('employees', JSON.stringify(employees)); // Saves the updated employee list.
+            renderEmployeeList(); // Refreshes the display.
+            
+            // Clear input fields:
+            document.getElementById('employeeName').value = '';
+            document.getElementById('employeeSalary').value = '';
+            document.getElementById('employeeTaxRate').value = '15';
+
+            showMessage("Employee Added", `${name} added successfully.`, "bg-green-600");
+        }
+
+        /**
+         * Renders the list of current employees in the Payroll tab.
+         */
+        function renderEmployeeList() {
+            const listEl = document.getElementById('employeeList');
+            listEl.innerHTML = employees.length === 0 // Check if there are employees.
+                ? '<p class="text-gray-500 italic">No employees set up yet.</p>' // Show a message if empty.
+                : '';
+
+            employees.forEach(e => { // Loop through employees and create a card for each.
+                const card = document.createElement('div');
+                card.className = 'flex justify-between items-center p-4 rounded-lg bg-gray-50 shadow-sm border border-gray-200';
+                card.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-800">${e.name}</p>
+                        <p class="text-xs text-gray-500">Salary: $${e.annualSalary.toFixed(0)} | Tax: ${e.taxRate * 100}%</p>
+                    </div>
+                    <button onclick="deleteEmployee('${e.id}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Remove</button>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+        
+        /**
+         * Deletes an employee by their ID.
+         * @param {string} id - The ID of the employee to delete.
+         */
+        function deleteEmployee(id) {
+             // Filters the array: keeps all employees whose ID does NOT match the one being deleted.
+             employees = employees.filter(e => e.id !== id);
+             localStorage.setItem('employees', JSON.stringify(employees));
+             renderEmployeeList();
+             showMessage("Employee Removed", `Employee removed from system.`, "bg-yellow-600");
+        }
+
+        /**
+         * Processes one month of payroll for all current employees.
+         */
+        function runMonthlyPayroll() {
+            if (employees.length === 0) {
+                return showMessage("Error", "No employees to process payroll for.", "bg-red-500");
+            }
+
+            const today = document.getElementById('dateInput').value; // Uses the date from the input field.
+            let totalGrossPay = 0;
+            let totalTaxDeducted = 0;
+            let payrollRuns = 0;
+
+            employees.forEach(e => {
+                const monthlyGross = e.annualSalary / 12; // Calculates monthly gross pay (Annual / 12). CHANGE '/ 12' if you want a different pay period (e.g., '/ 52' for weekly).
+                const monthlyTaxDeduction = monthlyGross * e.taxRate; // Calculates the tax amount.
+
+                totalGrossPay += monthlyGross;
+                totalTaxDeducted += monthlyTaxDeduction;
+                payrollRuns++;
+                
+                // Record Gross Expense (This is the double-entry accounting step for the P&L)
+                transactions.push({
+                    id: `PRL-${Math.random().toString(36).substring(2, 6)}`,
+                    date: today,
+                    type: 'Expense',
+                    description: `Monthly Gross Payroll for ${e.name}`,
+                    value: monthlyGross,
+                    category: 'Salaries & Wages',
+                    source: 'Payroll'
+                });
+                
+                payrollLiability += monthlyTaxDeduction; // Increases the total amount of tax owed (Liability for the Balance Sheet).
+            });
+            
+            localStorage.setItem('transactions', JSON.stringify(transactions)); // Save new expense transactions.
+            localStorage.setItem('payrollLiability', payrollLiability.toFixed(2)); // Save new tax liability total.
+            
+            renderLedger(); // Refresh ledger view.
+            updateSummaryAndChart(); // Refresh financial reports.
+
+            showMessage("Payroll Success", 
+                `${payrollRuns} pay cycles processed. Tax Liability: $${payrollLiability.toFixed(2)}.`, 
+                "bg-indigo-600", 6000); // Shows a longer success message (6 seconds).
+        }
+
+        /**
+         * Records owner contributions, drawings, or loans/repayments.
+         */
+        function recordCapital() {
+            const type = document.getElementById('capitalType').value; // Get the type (e.g., 'Equity-Contribution').
+            const amount = parseFloat(document.getElementById('capitalAmount').value);
+            const date = document.getElementById('dateInput').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                return showMessage("Input Error", "Please enter a valid positive amount.", "bg-red-500");
+            }
+            
+            const newCapital = { // Create the capital transaction object.
+                id: Math.random().toString(36).substring(2, 10),
+                date: date,
+                type: type,
+                amount: amount,
+            };
+
+            capitalTransactions.push(newCapital); // Add to the capital array.
+            localStorage.setItem('capitalTransactions', JSON.stringify(capitalTransactions)); // Save to storage.
+            
+            updateSummaryAndChart(); // Recalculate and redraw reports (Balance Sheet is affected).
+            renderCapitalHistory(); // Refresh the history list.
+            document.getElementById('capitalAmount').value = ''; // Clear the input.
+            
+            showMessage("Capital Recorded", `${type} of $${amount.toFixed(2)} recorded. Check Balance Sheet.`, "bg-purple-600");
+        }
+        
+        /**
+         * Renders the history list of capital and debt movements.
+         */
+        function renderCapitalHistory() {
+             const listEl = document.getElementById('capitalHistory');
+             listEl.innerHTML = capitalTransactions.length === 0 
+                ? '<p class="text-gray-500 italic">No equity or debt transactions recorded.</p>'
+                : '';
+                
+             capitalTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => { // Sort by date, newest first.
+                // Determine if the flow is positive (Money coming IN) or negative (Money going OUT).
+                const isPositive = t.type.includes('Contribution') || t.type.includes('Loan'); 
+                const sign = isPositive ? '+' : '-';
+                const color = isPositive ? 'text-green-600' : 'text-red-600';
+
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center py-2 border-b border-gray-200';
+                item.innerHTML = `
+                    <p class="text-xs text-gray-500">${t.date}</p>
+                    <p class="font-medium text-gray-800">${t.type.replace('-', ' - ')}</p>
+                    <p class="font-bold ${color}">${sign}$${t.amount.toFixed(2)}</p>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+
+        // --- Invoicing Logic & Display ---
+        
+        let currentInvoiceData = {}; // Global object to temporarily hold calculation results for the invoice.
+
+        /**
+         * Calculates GST/Tax and Total Gross for the invoice.
+         * You can add complex tax logic here if needed.
+         */
+        function updateInvoiceCalculations() { 
+            const netPriceStr = document.getElementById('invoiceNetPrice').value;
+            const gstRateStr = document.getElementById('invoiceGstRate').value;
+            const netPrice = parseFloat(netPriceStr) || 0;
+            const gstRate = parseFloat(gstRateStr) || 0;
+            
+            const rate = gstRate / 100; // Converts percentage (e.g., 15) to decimal (e.g., 0.15).
+            const gstAmount = netPrice * rate; // Calculates the tax amount.
+            const totalGross = netPrice + gstAmount; // Calculates the final total.
+
+            currentInvoiceData = { net: netPrice, gst: gstAmount, gross: totalGross, rate: gstRate, valid: netPrice >= 0 && gstRate >= 0 }; // Store results.
+
+            const outputEl = document.getElementById('invoiceCalcOutput');
+            if (currentInvoiceData.valid && netPrice > 0) { // If calculations are valid, display summary.
+                outputEl.innerHTML = `
+                    <p>Tax Amount (${gstRate.toFixed(2)}%): <span class="font-bold text-yellow-700">$${gstAmount.toFixed(2)}</span></p>
+                    <p class="mt-1">Invoice Total (Gross): <span class="font-bold text-green-700 text-lg">$${totalGross.toFixed(2)}</span></p>
+                `;
+            } else {
+                 outputEl.innerHTML = '<span class="text-red-600 font-bold">Enter Net Price and Tax Rate to calculate.</span>';
+            }
+            return currentInvoiceData;
+        }
+
+        /**
+         * Renders the professional-looking invoice preview in the tab and in the hidden print area.
+         */
+        function updateInvoiceDisplay() {
+            const data = updateInvoiceCalculations(); // Get the calculated totals.
+            // Get user input fields, defaulting to placeholders if empty.
+            const clientName = document.getElementById('invoiceClientName').value.trim() || "[Client Name]";
+            const clientEmail = document.getElementById('invoiceClientEmail').value.trim() || "N/A";
+            const description = document.getElementById('invoiceDescription').value.trim() || "[Service Description]";
+            const companyName = document.getElementById('companyName').value.trim() || "Your Company Name";
+            const companyAddress = document.getElementById('companyAddress').value.trim() || "Your Address";
+            
+            // Hardcoded/default values for the invoice:
+            const companyEmail = "contact@finledgerpro.com"; // CHANGE THIS EMAIL.
+            const invoiceDate = new Date().toISOString().slice(0, 10); // Today's date.
+            const invoiceId = `INV-${Date.now().toString().slice(-6)}`; // Generates a simple, unique invoice number.
+
+            // Begin constructing the main HTML invoice template:
+            const template = `
+                <div class="flex justify-between items-start mb-10 border-b-4 border-blue-600 pb-4">
+                    <div>
+                        <h1 class="text-4xl font-extrabold text-blue-700">TAX INVOICE</h1>
+                        <p class="text-sm text-gray-500 mt-1">#${invoiceId}</p>
+                        <p class="text-base font-medium text-gray-800 mt-4">Date: ${invoiceDate}</p>
+                    </div>
+                    <div class="text-right">
+                        <h2 class="text-xl font-semibold text-gray-800">${companyName}</h2>
+                        <p class="text-sm text-gray-600">${companyAddress}</p>
+                        <p class="text-sm text-gray-600">Email: ${companyEmail}</p>
+                        <p class="text-sm text-gray-600 font-bold mt-1">GST ID: 99GSTFINTECH001</p> <!-- CHANGE THIS GST/Tax ID. -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 mb-10">
+                    <div>
+                        <p class="text-xs uppercase text-gray-500 font-bold mb-1">Billed To</p>
+                        <p class="text-lg font-semibold text-gray-800">${clientName}</p>
+                        <p class="text-sm text-gray-600">Email: ${clientEmail}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs uppercase text-gray-500 font-bold mb-1">Payment Terms</p>
+                        <p class="text-base font-medium text-red-600">NET 30</p> <!-- CHANGE these payment terms if needed. -->
+                    </div>
+                </div>
+
+                <div class="border-t border-b border-gray-300">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600">Description</th>
+                                <th class="py-3 px-4 text-right text-sm font-semibold text-gray-600 w-1/4">Net Amount ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200">
+                                <td class="py-3 px-4 text-left text-base text-gray-800">${description}</td>
+                                <td class="py-3 px-4 text-right font-medium text-gray-800">${data.net.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-end mt-6">
+                    <div class="w-full max-w-sm">
+                        <div class="space-y-2 text-right">
+                            <div class="flex justify-between text-base text-gray-700">
+                                <span>Subtotal (Net)</span>
+                                <span>$${data.net.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between text-base text-gray-700">
+                                <span>Tax (${data.rate.toFixed(2)}%)</span>
+                                <span>$${data.gst.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between text-2xl font-bold pt-4 border-t border-gray-300 text-blue-700">
+                                <span>TOTAL DUE</span>
+                                <span>$${data.gross.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-12 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-500 text-center">Thank you for your business. Payments can be sent to ${companyEmail}.</p>
+                </div>
+            `;
+
+            document.getElementById('invoicePreview').innerHTML = template; // Insert HTML into the visible preview area.
+            document.getElementById('invoiceTemplate').innerHTML = template; // Insert HTML into the hidden print container.
+        }
+
+        /**
+         * Triggers the browser's print dialog, which allows saving as PDF.
+         */
+        function downloadInvoice() {
+            if (!currentInvoiceData.valid || currentInvoiceData.net <= 0) {
+                 return showMessage("Input Required", "Please enter a valid Net Price and Tax Rate before generating the invoice.", "bg-red-500");
+            }
+            window.print(); // The browser's native print function (allows saving as PDF).
+            showMessage("Print Dialog Opened", "Please select 'Save as PDF' from the destination settings to save your invoice.", "bg-green-600", 6000);
+        }
+
+        // --- Utility Functions ---
+        
+        /**
+         * Exports all transaction data to a CSV file.
+         */
+        function exportData() {
+            if (transactions.length === 0) {
+                return showMessage("Warning", "No data to export.", "bg-yellow-600");
+            }
+            // 1. Create the CSV header row (the column names).
+            const header = Object.keys(transactions[0]).join(',');
+            
+            // 2. Create the data rows.
+            const rows = transactions.map(t => Object.values(t).map(value => {
+                // If a value contains a comma (,), wrap it in quotes (") to prevent breaking the CSV format.
+                const safeValue = (typeof value === 'string' && value.includes(',')) ? `"${value}"` : value; 
+                return safeValue;
+            }).join(',')); // Join all values with commas.
+            
+            const csvContent = header + '\n' + rows.join('\n'); // Combine header and rows with new lines.
+            
+            // 3. Create a downloadable file object (Blob).
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // 4. Create an invisible link element and click it to trigger the download.
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `finledger_export_${new Date().toISOString().slice(0, 10)}.csv`; // Sets the default filename.
+            document.body.appendChild(link);
+            link.click(); // Triggers the download.
+            document.body.removeChild(link); // Clean up the temporary link.
+            
+            showMessage("Export Success", "Data has been exported to CSV file.", "bg-blue-600");
+        }
+
+        /**
+         * Displays a temporary notification message box in the corner.
+         * @param {string} title - Bold title of the message.
+         * @param {string} message - Content of the message.
+         * @param {string} colorClass - Tailwind class for background color (e.g., 'bg-red-500').
+         * @param {number} duration - How long the message should be visible in milliseconds (default 4000ms/4 seconds).
+         */
+        function showMessage(title, message, colorClass, duration = 4000) {
+            const container = document.getElementById('app');
+            let msgBox = document.getElementById('messageBox');
+
+            if (!msgBox) { // If the message box doesn't exist yet, create it.
+                msgBox = document.createElement('div');
+                msgBox.id = 'messageBox';
+                // Fixed position in the top-right corner, high z-index to be on top of everything.
+                msgBox.className = 'fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300'; 
+                container.appendChild(msgBox);
+            }
+
+            // Handles multi-line messages for better display.
+            const formattedMessage = message.split('\n').map(line => `<p class="text-sm">${line}</p>`).join('');
+
+            msgBox.innerHTML = `<p class="font-bold">${title}</p>${formattedMessage}`; // Set the message content.
+            msgBox.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 ${colorClass}`; // Set the color.
+            msgBox.style.opacity = 1; // Make it fully visible.
+
+            clearTimeout(msgBox.timer); // Clear any previous timer to keep the box visible if a new message arrives.
+            msgBox.timer = setTimeout(() => { // Set a new timer to fade the box out after the duration.
+                msgBox.style.opacity = 0;
+            }, duration);
+        }
+    </script>
+</body>
+</html>
